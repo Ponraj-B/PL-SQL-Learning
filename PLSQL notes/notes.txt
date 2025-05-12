@@ -1,1 +1,481 @@
-notes
+DAY 1
+
+1)	 create an employee table, populate it with sample data, and create a temporary table with the same structure.
+
+create table emp(emp_id number primary key,salary number(5,2));
+
+BEGIN
+  for i in 1..100 loop
+    insert into emp values(i,100.00);
+  end loop;
+  commit;
+END;
+/
+
+select * from emp;
+
+create table temp_emp as (select * from emp where 1=2); 
+
+select * from temp_emp;
+
+2)	Insert all the rows from the above table to table B using cursor
+
+DECLARE
+  cursor emp_cursor is (select * from emp);
+  emp_record emp%rowtype;
+BEGIN 
+  open emp_cursor;
+    loop
+      exit when emp_cursor%NOTFOUND;
+      fetch emp_cursor into emp_record;
+      insert into temp_emp values emp_record;
+    end loop;
+  close emp_cursor;
+  commit;
+END;
+/
+
+select * from temp_emp;
+
+DAY 2
+DIFFERENCE BETWEEN IMPLICIT CURSOR VS EXPLICIT CURSOR 
+IMPLICIT CURSOR :
+-	It will be created and managed by plsql itself.
+-	Created for SELECT or DML statements.
+-	No need to close explicitly.
+Implicit cursor attributes :
+1)	%ISOPEN 
+2)	%FOUND
+3)	%NOTFOUND
+4)	%ROWCOUNT
+5)	 %BULK_ROWCOUNT 
+6)	%BULK_EXCEPTIONS
+%ISOPEN – will always return false for implicit attributes
+
+
+Implicit cursor program EXAMPLE :
+ 
+EXPLICIT CURSOR :
+-	Created and managed by programmar
+Explicit cursor attributes :
+	Same as implicit cursor
+EXPLICIT CURSOR EXAMPLE :
+ 
+
+PARAMETERIZED CURSOR EXAMPLE :
+ 
+REF CURSOR :
+•	Strongly typed ref cursor
+•	Weakly typed ref cursor
+Strongly typed ref cursor :
+	A strongly typed REF CURSOR is associated with a specific query structure. This ensures type safety but limits flexibility.
+ 
+
+Weakly typed REF CURSOR :
+	A weakly typed REF CURSOR is not associated with a specific query structure, offering more flexibility but less type safety.
+ 
+
+
+EXCEPTIONS :
+-	Predefined Exceptions – sql error code and error message, error name is defined by oracle
+-	Non predefined – sql error code is declared by oracle but error name is not declared
+-	User defined – declared and managed by user
+Ways to raise exception :
+-	We can raise exception using RAISE keyword and RAISE_APPLICATION_ERROR
+RAISE exception_name
+RAISE_EXCEPTION_ERROR(error_code, error_message) – is a procedure
+User defined sample program:
+ 
+Pre Defined sample program :
+ 
+
+Handling both exceptions :
+ 
+
+RAISE_APPLICATION_ERROR :
+The RAISE_APPLICATION_ERROR method in PL/SQL is used to create and raise user-defined error messages.
+1.	Error Number Range: The error number must be between -20000 and -20999.
+2.	Custom Error Message: You can specify a custom error message that provides more context about the error.
+3.	Handling Errors: The raised error can be caught and handled in the EXCEPTION block, allowing you to manage the error gracefully.
+
+ 
+
+PRAGMA_EXCEPTION_INIT  :
+One common use of PRAGMA is PRAGMA EXCEPTION_INIT, which allows you to associate an exception name with an Oracle error number. This can be useful for handling specific Oracle errors in a more readable way.
+Sample Program :
+ 
+PROCEDURE :
+	A procedure is a subprogram that performs a specific action. It can accept parameters and does not return a value directly. 
+Example :
+ 
+
+Procedures with OUT Parameters
+Procedures can have IN, OUT, and IN OUT parameters. OUT parameters allow the procedure to return values.
+ 
+
+Functions
+A function is a subprogram that returns a single value. It can accept parameters and must have a RETURN statement.
+ 
+
+Functions with Exception Handling
+Functions can include exception handling to manage errors gracefully.
+Sample Program :
+ 
+
+Advanced Concepts :
+Bulk Collect and FORALL :
+Bulk operations improve performance by reducing context switches between SQL and PL/SQL.
+Sample Program :
+ 
+
+Dynamic SQL
+Dynamic SQL allows you to construct and execute SQL statements at runtime.
+ 
+
+SQL statements that can be used in both Procedure and Functions:
+
+SQL Statement Type	Description	Example
+SELECT	Retrieves data from the database.	SELECT emp_name INTO v_emp_name FROM employees WHERE emp_id = p_emp_id;
+INSERT	Adds new rows to a table.	INSERT INTO employees (emp_id, emp_name, salary) VALUES (p_emp_id, p_emp_name, p_salary);
+UPDATE	Modifies existing rows in a table.	UPDATE employees SET salary = p_new_salary WHERE emp_id = p_emp_id;
+DELETE	Removes rows from a table.	DELETE FROM employees WHERE emp_id = p_emp_id;
+COMMIT	Makes changes permanent in the database.	COMMIT;
+ROLLBACK	Undoes changes that have not been committed.	ROLLBACK;
+CREATE	Creates database objects like tables, views, etc.	EXECUTE IMMEDIATE 'CREATE TABLE test_table (id NUMBER, name VARCHAR2(50))';
+ALTER	Modifies existing database objects.	EXECUTE IMMEDIATE 'ALTER TABLE test_table ADD (salary NUMBER)';
+DROP	Deletes database objects.	EXECUTE IMMEDIATE 'DROP TABLE test_table';
+EXECUTE IMMEDIATE	Executes dynamic SQL statements.	EXECUTE IMMEDIATE p_sql;
+
+Key Points
+•	Procedures: Can use all types of SQL statements to perform various operations.
+•	Functions: Can also use all types of SQL statements, but they must return a single value.
+Example Usage in Procedures
+CREATE OR REPLACE PROCEDURE manage_employee(p_emp_id IN NUMBER, p_emp_name IN VARCHAR2, p_salary IN NUMBER) IS
+BEGIN
+  -- Insert a new employee
+  INSERT INTO employees (emp_id, emp_name, salary) VALUES (p_emp_id, p_emp_name, p_salary);
+
+  -- Update the salary of the employee
+  UPDATE employees SET salary = p_salary * 1.1 WHERE emp_id = p_emp_id;
+
+  -- Commit the transaction
+  COMMIT;
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Rollback in case of an error
+    ROLLBACK;
+    DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END manage_employee;
+Example Usage in Functions
+CREATE OR REPLACE FUNCTION get_employee_name(p_emp_id IN NUMBER) RETURN VARCHAR2 IS
+  v_emp_name employees.emp_name%TYPE;
+BEGIN
+  SELECT emp_name INTO v_emp_name FROM employees WHERE emp_id = p_emp_id;
+  RETURN v_emp_name;
+END get_employee_name;
+I hope this combined table helps clarify the SQL statements you can use in both procedures and functions! If you have any more questions or need further examples, feel free to ask.
+Parameter modes :
+ 
+IN parameter example :
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+
+
+
+Packages :
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Overloading Procedure :
+ 
+Overloading Funtion :
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 	 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+DYNAMIC SQL :
+ 
+ 
+ 
+ 
+Example :
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Triggers :
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Example :
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Example of Triggers on views :
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+SQL MACROS :
+What Are SQL Macros?
+SQL Macros are a feature in Oracle SQL that allow you to encapsulate complex logic into reusable components. They can be used to simplify and standardize SQL queries.
+Traditional SQL Querying
+In traditional SQL querying, you write the full query each time you need to perform a specific task. For example, if you want to calculate total sales for a specific zip code, you might write:
+SELECT cust.cust_postal_code AS zip_code, 
+       SUM(amount_sold) AS revenue 
+FROM sh.customers cust, 
+     sh.sales s 
+WHERE cust.cust_postal_code = '60332' 
+  AND s.cust_id = cust.cust_id 
+GROUP BY cust.cust_postal_code 
+ORDER BY cust.cust_postal_code;
+Using SQL Macros
+With SQL Macros, you can encapsulate this logic into a reusable function. This makes your code cleaner and easier to maintain. Here's how you can do it:
+1.	Create the Macro Function:
+CREATE OR REPLACE FUNCTION total_sales(zip_code VARCHAR2)
+RETURN VARCHAR2 SQL_MACRO IS
+BEGIN
+  RETURN q'{ 
+    SELECT cust.cust_postal_code AS zip_code, 
+           SUM(amount_sold) AS revenue 
+    FROM sh.customers cust, 
+         sh.sales s 
+    WHERE cust.cust_postal_code = total_sales.zip_code 
+      AND s.cust_id = cust.cust_id 
+    GROUP BY cust.cust_postal_code 
+    ORDER BY cust.cust_postal_code 
+  }';
+END;
+/
+2.	Use the Macro in a Query:
+SELECT * FROM total_sales(zip_code => '60332');
+Key Differences
+1.	Reusability: 
+o	Traditional SQL: You need to write the full query each time.
+o	SQL Macros: You write the logic once and reuse it by calling the macro.
+2.	Maintainability:
+o	Traditional SQL: Changes need to be made in every instance of the query.
+o	SQL Macros: Changes are made in the macro function, and all queries using the macro are automatically updated.
+3.	Readability:
+o	Traditional SQL: Complex queries can be hard to read and understand.
+o	SQL Macros: Encapsulating logic in macros makes the main query simpler and more readable.
+Example: Scalar Macro for Date Formatting
+1.	Traditional SQL:
+SELECT TO_CHAR(hire_date, 'YYYY-MM-DD') AS formatted_date
+FROM employees;
+2.	Using a Scalar Macro:
+CREATE OR REPLACE FUNCTION format_date(dat DATE)
+RETURN VARCHAR2 SQL_MACRO(SCALAR) IS
+BEGIN
+  RETURN q'{ TO_CHAR(dat, 'YYYY-MM-DD') }';
+END;
+/
+SELECT format_date(hire_date) AS formatted_date
+FROM employees;
+Summary
+•	SQL Macros help you write cleaner, more maintainable, and reusable SQL code.
+•	They encapsulate complex logic, making your queries simpler and easier to understand.
+•	They differ from traditional SQL by providing a way to standardize and reuse query logic.
+Feel free to ask if you have any more questions or need further examples!
+Absolutely! Here are a few more examples of SQL macros to help you understand their versatility and power.
+Example 1: Table Macro for Customer Orders
+This macro retrieves customer orders based on a given customer ID.
+1.	Create the Macro Function:
+CREATE OR REPLACE FUNCTION customer_orders(cust_id NUMBER)
+RETURN VARCHAR2 SQL_MACRO IS
+BEGIN
+  RETURN q'{ 
+    SELECT o.order_id, o.order_date, o.total_amount 
+    FROM orders o 
+    WHERE o.customer_id = customer_orders.cust_id 
+    ORDER BY o.order_date 
+  }';
+END;
+/
+2.	Use the Macro in a Query:
+SELECT * FROM customer_orders(cust_id => 101);
+This query will return all orders for the customer with ID 101.
+Example 2: Scalar Macro for Calculating Discount
+This macro calculates a discount based on the original price and discount rate.
+1.	Create the Scalar Macro Function:
+CREATE OR REPLACE FUNCTION calculate_discount(price NUMBER, discount_rate NUMBER)
+RETURN VARCHAR2 SQL_MACRO(SCALAR) IS
+BEGIN
+  RETURN q'{ price * (1 - discount_rate / 100) }';
+END;
+/
+2.	Use the Macro in a Query:
+SELECT product_name, 
+       price, 
+       calculate_discount(price, 10) AS discounted_price 
+FROM products;
+This query will return the product name, original price, and discounted price for each product.
+Example 3: Table Macro for Employee Details
+This macro retrieves detailed information about employees in a specific department.
+1.	Create the Macro Function:
+CREATE OR REPLACE FUNCTION department_employees(dept_id NUMBER)
+RETURN VARCHAR2 SQL_MACRO IS
+BEGIN
+  RETURN q'{ 
+    SELECT e.employee_id, e.first_name, e.last_name, e.salary 
+    FROM employees e 
+    WHERE e.department_id = department_employees.dept_id 
+    ORDER BY e.last_name 
+  }';
+END;
+/
+2.	Use the Macro in a Query:
+SELECT * FROM department_employees(dept_id => 10);
+This query will return all employees in the department with ID 10.
+Example 4: Scalar Macro for Age Calculation
+This macro calculates the age of an employee based on their birth date.
+1.	Create the Scalar Macro Function:
+CREATE OR REPLACE FUNCTION calculate_age(birth_date DATE)
+RETURN VARCHAR2 SQL_MACRO(SCALAR) IS
+BEGIN
+  RETURN q'{ FLOOR(MONTHS_BETWEEN(SYSDATE, birth_date) / 12) }';
+END;
+/
+2.	Use the Macro in a Query:
+SELECT first_name, 
+       last_name, 
+       birth_date, 
+       calculate_age(birth_date) AS age 
+FROM employees;
+This query will return the first name, last name, birth date, and age of each employee.
