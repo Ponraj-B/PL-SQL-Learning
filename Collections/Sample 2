@@ -19,7 +19,18 @@ INSERT INTO products VALUES (5, 'Printer', 8000, 'Electronics');
 COMMIT;
 
 
+-- Drop if already exists (optional)
+DROP TABLE products_log CASCADE CONSTRAINTS;
 
+-- Create products_log table to log processed product info
+CREATE TABLE products_log (
+    log_id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_id NUMBER,
+    product_name VARCHAR2(50),
+    product_price NUMBER,
+    discount NUMBER,
+    created_at DATE DEFAULT SYSDATE
+);
 
 
 DECLARE
