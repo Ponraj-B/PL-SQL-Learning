@@ -1,0 +1,159 @@
+-- Drop if already exists (optional)
+DROP TABLE products CASCADE CONSTRAINTS;
+
+-- Create products table
+CREATE TABLE products (
+    product_id NUMBER PRIMARY KEY,
+    product_name VARCHAR2(50),
+    product_price NUMBER,
+    product_category VARCHAR2(30)
+);
+
+-- Insert sample data
+INSERT INTO products VALUES (1, 'Laptop', 55000, 'Electronics');
+INSERT INTO products VALUES (2, 'Tablet', 30000, 'Electronics');
+INSERT INTO products VALUES (3, 'Smartphone', 20000, 'Electronics');
+INSERT INTO products VALUES (4, 'Monitor', 12000, 'Electronics');
+INSERT INTO products VALUES (5, 'Printer', 8000, 'Electronics');
+
+COMMIT;
+
+
+
+
+DECLARE
+    -- Cursor declaration
+    CURSOR product_cur IS
+        SELECT * FROM products;
+
+    -- Using %ROWTYPE
+    TYPE ProductRecType IS TABLE OF products%ROWTYPE;
+
+    -- Collection for BULK COLLECT
+    product_rows ProductRecType;
+
+    -- Nested Table for prices
+    TYPE ProductPriceTable IS TABLE OF products.product_price%TYPE;
+    product_prices ProductPriceTable := ProductPriceTable();
+
+    -- VARRAY for product names
+    TYPE ProductNameArray IS VARRAY(5) OF VARCHAR2(50);
+    product_names ProductNameArray := ProductNameArray();
+
+    -- Associative Array for descriptions
+    TYPE ProductDescTable IS TABLE OF VARCHAR2(200) INDEX BY PLS_INTEGER;
+    product_descriptions ProductDescTable;
+
+    -- Table for BULK INSERT log
+    TYPE ProductLogTable IS TABLE OF products_log%ROWTYPE INDEX BY PLS_INTEGER;
+    product_log ProductLogTable;
+
+    idx PLS_INTEGER := 0;
+    discount NUMBER;
+
+    -- Custom Exception
+    insufficient_products EXCEPTION;
+    PRAGMA EXCEPTION_INIT(insufficient_products, -20001);
+
+    -- *********************** PROCEDURE DEFINITIONS ***********************
+
+    -- Procedure to load products into collections
+    PROCEDURE load_products IS
+    BEGIN
+        OPEN product_cur;
+        FETCH product_cur BULK COLLECT INTO product_rows;
+        CLOSE product_cur;
+
+        IF product_rows.COUNT < 5 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Less than 5 products retrieved. Found: ' || product_rows.COUNT);
+        END IF;
+    END load_products;
+
+    -- Procedure to process products into collections
+    PROCEDURE process_products IS
+    BEGIN
+        FOR i IN 1 .. product_rows.COUNT LOOP
+            idx := idx + 1;
+
+            -- Fill VARRAY with product names
+            IF idx <= 5 THEN
+                product_names.EXTEND;
+                product_names(idx) := product_rows(i).product_name;
+            ELSE
+                RAISE_APPLICATION_ERROR(-20002, 'VARRAY limit exceeded.');
+            END IF;
+
+            -- Fill Nested Table with product prices
+            product_prices.EXTEND;
+            product_prices(idx) := product_rows(i).product_price;
+
+            -- Fill Associative Array with product descriptions
+            product_descriptions(product_rows(i).product_id) :=
+                product_rows(i).product_name || ' (' || product_rows(i).product_category || ')';
+
+            -- Determine discount
+            IF product_rows(i).product_price > 40000 THEN
+                discount := 10;
+            ELSIF product_rows(i).product_price BETWEEN 15000 AND 40000 THEN
+                discount := 5;
+            ELSE
+                discount := 0;
+            END IF;
+
+            -- Prepare product_log for BULK INSERT using FORALL
+            product_log(idx).product_id := product_rows(i).product_id;
+            product_log(idx).product_name := product_rows(i).product_name;
+            product_log(idx).product_price := product_rows(i).product_price;
+            product_log(idx).discount := discount;
+            product_log(idx).created_at := SYSDATE;
+        END LOOP;
+    END process_products;
+
+    -- Procedure to bulk insert into products_log using FORALL
+    PROCEDURE insert_products_log IS
+    BEGIN
+        FORALL i IN INDICES OF product_log
+            INSERT INTO products_log (product_id, product_name, product_price, discount, created_at)
+            VALUES (product_log(i).product_id, product_log(i).product_name, product_log(i).product_price, product_log(i).discount, product_log(i).created_at);
+    END insert_products_log;
+
+    -- Procedure to display collections (output only, no DB work)
+    PROCEDURE display_output IS
+    BEGIN
+        -- VARRAY
+        DBMS_OUTPUT.PUT_LINE('--- Product Names (VARRAY) ---');
+        FOR i IN 1 .. product_names.COUNT LOOP
+            DBMS_OUTPUT.PUT_LINE('Product ' || i || ': ' || product_names(i));
+        END LOOP;
+
+        -- Nested Table with discounts
+        DBMS_OUTPUT.PUT_LINE('--- Product Prices with Discounts (Nested Table) ---');
+        FOR i IN 1 .. product_prices.COUNT LOOP
+            DBMS_OUTPUT.PUT_LINE('Product ' || i || ' Price: ₹' || product_prices(i));
+        END LOOP;
+
+        -- Associative Array
+        DBMS_OUTPUT.PUT_LINE('--- Product Descriptions (Associative Array) ---');
+        i := product_descriptions.FIRST;
+        WHILE i IS NOT NULL LOOP
+            DBMS_OUTPUT.PUT_LINE('Product ID ' || i || ': ' || product_descriptions(i));
+            i := product_descriptions.NEXT(i);
+        END LOOP;
+    END display_output;
+
+BEGIN
+    -- Modular execution
+    load_products;
+    process_products;
+    insert_products_log;
+    display_output;
+
+    DBMS_OUTPUT.PUT_LINE('Products processed and logged successfully.');
+
+EXCEPTION
+    WHEN insufficient_products THEN
+        DBMS_OUTPUT.PUT_LINE(SQLERRM);
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Unexpected Error: ' || SQLERRM);
+END;
+/
