@@ -1,0 +1,114 @@
+-- Drop if already exists (optional)
+DROP TABLE products CASCADE CONSTRAINTS;
+
+-- Create products table
+CREATE TABLE products (
+    product_id NUMBER PRIMARY KEY,
+    product_name VARCHAR2(50),
+    product_price NUMBER,
+    product_category VARCHAR2(30)
+);
+
+-- Insert sample data
+INSERT INTO products VALUES (1, 'Laptop', 55000, 'Electronics');
+INSERT INTO products VALUES (2, 'Tablet', 30000, 'Electronics');
+INSERT INTO products VALUES (3, 'Smartphone', 20000, 'Electronics');
+INSERT INTO products VALUES (4, 'Monitor', 12000, 'Electronics');
+INSERT INTO products VALUES (5, 'Printer', 8000, 'Electronics');
+
+COMMIT;
+
+
+
+
+
+DECLARE
+    -- Cursor declaration (we will use BULK COLLECT INTO, so cursor variable style)
+    CURSOR product_cur IS
+        SELECT * FROM products;
+
+    -- Using %ROWTYPE to hold an entire row of products
+    TYPE ProductRecType IS TABLE OF products%ROWTYPE;
+
+    -- Collection to hold the fetched rows
+    product_rows ProductRecType;
+
+    -- VARRAY for Product Names
+    TYPE ProductNameArray IS VARRAY(5) OF VARCHAR2(50);
+    product_names ProductNameArray := ProductNameArray();
+
+    -- Nested Table for Product Prices
+    TYPE ProductPriceTable IS TABLE OF products.product_price%TYPE;
+    product_prices ProductPriceTable := ProductPriceTable();
+
+    -- Associative Array for Product Descriptions
+    TYPE ProductDescTable IS TABLE OF VARCHAR2(200) INDEX BY PLS_INTEGER;
+    product_descriptions ProductDescTable;
+
+    -- Other Variables
+    idx PLS_INTEGER := 0;
+    discount NUMBER;
+
+BEGIN
+    -- Bulk collect all rows from cursor into the product_rows collection
+    OPEN product_cur;
+    FETCH product_cur BULK COLLECT INTO product_rows;
+    CLOSE product_cur;
+
+    -- Process the fetched data into other collections
+    FOR i IN 1 .. product_rows.COUNT LOOP
+        idx := idx + 1;
+
+        -- Handling VARRAY Limit
+        IF idx <= 5 THEN
+            product_names.EXTEND;
+            product_names(idx) := product_rows(i).product_name;
+        ELSE
+            RAISE_APPLICATION_ERROR(-20002, 'VARRAY limit exceeded.');
+        END IF;
+
+        product_prices.EXTEND;
+        product_prices(idx) := product_rows(i).product_price;
+
+        product_descriptions(product_rows(i).product_id) := 
+            product_rows(i).product_name || ' (' || product_rows(i).product_category || ')';
+    END LOOP;
+
+    -- Display Product Names (VARRAY)
+    DBMS_OUTPUT.PUT_LINE('--- Product Names (VARRAY) ---');
+    FOR i IN 1 .. product_names.COUNT LOOP
+        DBMS_OUTPUT.PUT_LINE('Product ' || i || ': ' || product_names(i));
+    END LOOP;
+
+    -- Display Prices with Discounts (using Conditional IF)
+    DBMS_OUTPUT.PUT_LINE('--- Product Prices with Discounts (Nested Table) ---');
+    FOR i IN 1 .. product_prices.COUNT LOOP
+        IF product_prices(i) > 40000 THEN
+            discount := 10;
+        ELSIF product_prices(i) BETWEEN 15000 AND 40000 THEN
+            discount := 5;
+        ELSE
+            discount := 0;
+        END IF;
+
+        DBMS_OUTPUT.PUT_LINE('Product ' || i || ' Price: ₹' || product_prices(i) || ' | Discount: ' || discount || '%');
+    END LOOP;
+
+    -- Display Descriptions using Associative Array
+    DBMS_OUTPUT.PUT_LINE('--- Product Descriptions (Associative Array) ---');
+    FOR i IN 1 .. idx LOOP
+        IF product_descriptions.EXISTS(product_rows(i).product_id) THEN
+            DBMS_OUTPUT.PUT_LINE('Product ID ' || product_rows(i).product_id || ': ' || product_descriptions(product_rows(i).product_id));
+        END IF;
+    END LOOP;
+
+    -- Example: Raise custom error if total products fetched < 5
+    IF idx < 5 THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Error: Less than 5 products retrieved. Total: ' || idx);
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
